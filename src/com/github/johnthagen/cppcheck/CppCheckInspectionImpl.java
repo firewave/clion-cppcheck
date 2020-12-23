@@ -56,6 +56,13 @@ class CppCheckInspectionImpl {
         }
     }
 
+    private static void sendNotification(@NotNull final String title, @NotNull final String content, final NotificationType type) {
+        Notifications.Bus.notify(new Notification("Cppcheck",
+                title,
+                content,
+                type));
+    }
+
     // TODO: make configurable
     private static final boolean VERBOSE_LOG = false;
     private static final String INCONCLUSIVE_TEXT = ":inconclusive";
@@ -69,10 +76,9 @@ class CppCheckInspectionImpl {
 
         if (VERBOSE_LOG) {
             // TODO: provide XML output via a "Show Cppcheck output" action - event log messages are truncated
-            Notifications.Bus.notify(new Notification("Cppcheck",
-                    "Cppcheck execution output for " + psiFile.getName(),
+            sendNotification("Cppcheck execution output for " + psiFile.getVirtualFile().getCanonicalPath(),
                     cppcheckOutput,
-                    NotificationType.INFORMATION));
+                    NotificationType.INFORMATION);
         }
 
         final List<ProblemDescriptor> descriptors = new ArrayList<>();
@@ -95,16 +101,6 @@ class CppCheckInspectionImpl {
             final NamedNodeMap attributes = error.getAttributes();
 
             final String id = attributes.getNamedItem("id").getNodeValue();
-
-            // Skip the "toomanyconfigs" error
-            /*
-       			<error id="toomanyconfigs" severity="information" msg="Too many #ifdef configurations - cppcheck only checks 1 of 12 configurations. Use --force to check all configurations." verbose="The checking of the file will be interrupted because there are too many #ifdef configurations. Checking of all #ifdef configurations can be forced by --force command line option or from GUI preferences. However that may increase the checking time." cwe="398">
-                    <location file="C:\Users\Name\AppData\Local\Temp\___valueflow.cpp" line="0" column="0"/>
-                </error>
-            */
-            if (id.equals("toomanyconfigs")) {
-                continue;
-            }
 
             // Skip the "missingIncludeSystem" error
             /*
@@ -131,41 +127,82 @@ class CppCheckInspectionImpl {
                 }
             }
 
+            int lineNumber = 0;
+            int column = 0;
+
+            /*
+                <error id="missingInclude" severity="information" msg="Cppcheck cannot find all the include files (use --check-config for details)" verbose="Cppcheck cannot find all the include files. Cppcheck can check the code without the include files found. But the results will probably be more accurate if all the include files are found. Please check your project&apos;s include directories and add all of them as include directories for Cppcheck. To see what files Cppcheck cannot find use --check-config."/>
+            */
+            // TODO: handle like any warning when Cppcheck provides the --check-config results with the normal analysis
+            if (id.equals("missingInclude")) {
+                // is a global warning without location information
+            }
             // ignore entries without location e.g. missingIncludeSystem
-            if (location == null) {
+            else if (location == null) {
                 continue;
             }
+            else {
+                final NamedNodeMap locationAttributes = location.getAttributes();
+                final String fileName = new File(locationAttributes.getNamedItem("file").getNodeValue()).getName();
+                lineNumber = Integer.parseInt(locationAttributes.getNamedItem("line").getNodeValue());
+                column = Integer.parseInt(locationAttributes.getNamedItem("column").getNodeValue()); // TODO: use in problem?
 
-            final NamedNodeMap locationAttributes = location.getAttributes();
-            final String fileName = new File(locationAttributes.getNamedItem("file").getNodeValue()).getName();
-            int lineNumber = Integer.parseInt(locationAttributes.getNamedItem("line").getNodeValue());
-            final int column = Integer.parseInt(locationAttributes.getNamedItem("column").getNodeValue()); // TODO
-
-            // If a file #include's header files, Cppcheck will also run on the header files and print
-            // any errors. These errors don't apply to the current file and should not be drawn. They can
-            // be distinguished by checking the file name.
-            if (!fileName.equals(sourceFileName)) {
-                continue;
+                // If a file #include's header files, Cppcheck will also run on the header files and print
+                // any errors. These errors don't apply to the current file and should not be drawn. They can
+                // be distinguished by checking the file name.
+                if (!fileName.equals(sourceFileName)) {
+                    continue;
+                }
             }
 
-            // Cppcheck error
-            if (lineNumber <= 0 || lineNumber > document.getLineCount()) {
-                Notifications.Bus.notify(new Notification("Cppcheck",
+            // leaving it at null will report it for the whole file
+            TextRange range = null;
+
+            /*
+                <error id="toomanyconfigs" severity="information" msg="Too many #ifdef configurations - cppcheck only checks 1 of 12 configurations. Use --force to check all configurations." verbose="The checking of the file will be interrupted because there are too many #ifdef configurations. Checking of all #ifdef configurations can be forced by --force command line option or from GUI preferences. However that may increase the checking time." cwe="398">
+                    <location file="C:\Users\Name\AppData\Local\Temp\___valueflow.cpp" line="0" column="0"/>
+                </error>
+            */
+            if (id.equals("toomanyconfigs")) {
+                // show as message for the file
+            }
+            // TODO: handle like any warning when Cppcheck provides the --check-config results with the normal analysis
+            else if (id.equals("missingInclude")) {
+                // show as message for the file
+            }
+            /*
+                <error id="noValidConfiguration" severity="information" msg="This file is not analyzed. Cppcheck failed to extract a valid configuration. Use -v for more details." verbose="This file is not analyzed. Cppcheck failed to extract a valid configuration. The tested configurations have these preprocessor errors:\012&apos;&apos; : [/mnt/s/GitHub/cppcheck-fw/gui/temp/moc_platforms.cpp:13] #error &quot;The header file &apos;platforms.h&apos; doesn&apos;t include &lt;QObject&gt;.&quot;\012Q_MOC_OUTPUT_REVISION : [/mnt/s/GitHub/cppcheck-fw/gui/temp/moc_platforms.cpp:15] #error &quot;This file was generated using the moc from 5.12.5. It&quot;">
+                    <location file="/mnt/s/GitHub/cppcheck-fw/gui/temp/moc_platforms.cpp" line="0" column="0"/>
+                </error>
+            */
+            else if (id.equals("noValidConfiguration")) {
+                // show as message for the file
+                // show the verbose message as notification since it contains important details
+                final String verboseMessage = attributes.getNamedItem("verbose").getNodeValue();
+                sendNotification(
+                        "Cppcheck noValidConfiguration for "+ psiFile.getVirtualFile().getCanonicalPath(),
+                        verboseMessage,
+                        NotificationType.INFORMATION);
+            }
+            else if (lineNumber <= 0 || lineNumber > document.getLineCount()) {
+                sendNotification(
                         "Cppcheck line number out-of-bounds " + i,
-                        id + " " + severity + " " + inconclusive + " " + errorMessage + " " + fileName + " " + lineNumber + " " + column,
-                        NotificationType.ERROR));
+                        id + " " + severity + " " + inconclusive + " " + errorMessage + " " + psiFile.getVirtualFile().getCanonicalPath() + " " + lineNumber + " " + column,
+                        NotificationType.ERROR);
                 continue;
             }
+            else {
+                // Document counts lines starting at 0, rather than 1 like in cppcheck.
+                lineNumber -= 1;
 
-            // Document counts lines starting at 0, rather than 1 like in cppcheck.
-            lineNumber -= 1;
-
-            final int lineStartOffset = DocumentUtil.getFirstNonSpaceCharOffset(document, lineNumber);
-            final int lineEndOffset = document.getLineEndOffset(lineNumber);
+                final int lineStartOffset = DocumentUtil.getFirstNonSpaceCharOffset(document, lineNumber);
+                final int lineEndOffset = document.getLineEndOffset(lineNumber);
+                range = TextRange.create(lineStartOffset, lineEndOffset);
+            }
 
             final ProblemDescriptor problemDescriptor = manager.createProblemDescriptor(
                     psiFile,
-                    TextRange.create(lineStartOffset, lineEndOffset),
+                    range,
                     "Cppcheck: (" + severity + (inconclusive ? INCONCLUSIVE_TEXT : "") + ") " + id + ": " + errorMessage,
                     severityToHighlightType(severity),
                     true);
