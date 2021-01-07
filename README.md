@@ -70,6 +70,9 @@ You can add additional include path using the `-I <path>` options.
 The batch analysis passes the files individually to `cppcheck` just like the highlighting inspections. So if you pass a 
 folder to the batch analysis it might not show the same findings as when passing a folder to `cppcheck` itself.
 
+It will also pass all the contents of the folder to the analysis and not just project files. This might lead to
+unexpected findings.
+
 Also some findings in headers files triggered by the analysis of a source files are not being shown.
 
 ### Showing raw output
