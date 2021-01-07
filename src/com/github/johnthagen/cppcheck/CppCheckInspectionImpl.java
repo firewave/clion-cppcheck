@@ -55,19 +55,20 @@ class CppCheckInspectionImpl {
     }
 
     // TODO: make configurable
-    private static final boolean VERBOSE_LOG = false;
+    private static final boolean VERBOSE_LOG = true;
     private static final String INCONCLUSIVE_TEXT = ":inconclusive";
 
     @NotNull
     public static List<ProblemDescriptor> parseOutput(@NotNull final PsiFile psiFile,
                                                       @NotNull final InspectionManager manager,
                                                       @NotNull final Document document,
+                                                      final boolean isOnTheFly,
                                                       @NotNull final String cppcheckOutput,
                                                       @NotNull final String sourceFileName) throws IOException, SAXException, ParserConfigurationException {
 
         if (VERBOSE_LOG) {
             // TODO: provide XML output via a "Show Cppcheck output" action - event log messages are truncated
-            CppcheckNotification.send("execution output for " + psiFile.getVirtualFile().getCanonicalPath(),
+            CppcheckNotification.send("execution output for " + psiFile.getVirtualFile().getCanonicalPath() + (isOnTheFly ? " [onthefly]" : ""),
                     cppcheckOutput,
                     NotificationType.INFORMATION);
         }
@@ -170,7 +171,7 @@ class CppCheckInspectionImpl {
             // If a file #include's header files, Cppcheck will also run on the header files and print
             // any errors. These errors don't apply to the current file and should not be drawn. They can
             // be distinguished by checking the file name.
-            if (!fileName.equals(sourceFileName)) {
+            if (isOnTheFly && !fileName.equals(sourceFileName)) {
                 continue;
             }
 

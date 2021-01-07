@@ -60,7 +60,7 @@ class CppcheckInspection extends LocalInspectionTool {
                     CppCheckInspectionImpl.executeCommandOnFile(cppcheckPath, prependIncludeDir(cppcheckOptions, vFile),
                             tempFile.getAbsolutePath(), cppcheckMisraPath);
 
-            final List<ProblemDescriptor> descriptors = CppCheckInspectionImpl.parseOutput(file, manager, document, cppcheckOutput,
+            final List<ProblemDescriptor> descriptors = CppCheckInspectionImpl.parseOutput(file, manager, document, isOnTheFly, cppcheckOutput,
                     tempFile.getName());
             return descriptors.toArray(new ProblemDescriptor[0]);
         } catch (final ExecutionException | CppcheckError | IOException | SAXException | ParserConfigurationException ex) {
