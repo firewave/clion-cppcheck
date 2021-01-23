@@ -51,6 +51,12 @@ class CppcheckInspection extends LocalInspectionTool {
             cppcheckOptions = String.format("%s --addon=%s", cppcheckOptions, cppcheckMisraPath);
         }
         cppcheckOptions = String.format("%s --xml", cppcheckOptions);
+        if (SupportedExtensions.isHeaderFile(vFile)) {
+            // Cppcheck always treats header a C files so we need to specify the language so C++ header are properly analyzed
+            cppcheckOptions = String.format("%s --language=c++", cppcheckOptions);
+        }
+
+        // TODO: remove "--language=c++" from existing options
 
         File tempFile = null;
         try {

@@ -15,9 +15,9 @@ class Configuration implements Configurable {
     private JTextField cppcheckOptionsField;
     private JFilePicker cppcheckMisraFilePicker;
     private static final String CPPCHECK_NOTE =
-            "Note: C++ projects should leave --language=c++ appended to the Cppcheck options to avoid some " +
-                    "false positives in header files due to the fact that Cppcheck implicitly defaults to " +
-                    "setting --language to \"c\" for .h files.";
+            "Detailed installation step can be found at https://plugins.jetbrains.com/plugin/8143-cppcheck.\n" +
+                    "Note: The plugin has several shortcomings compared to running Cppcheck manually. " + "" +
+                    "Please refer to the 'Known issues' section in the link above.";
     private static final String CPPCHECK_MISRA_NOTE =
             "Using MISRA requires a rule texts file, which can be obtained from MISRA themselves " +
                     "(Their license prohibits distributing the rules texts)\n\n" +
@@ -35,7 +35,7 @@ class Configuration implements Configurable {
     static final String CONFIGURATION_KEY_CPPCHECK_OPTIONS = "cppcheckOptions";
     static final String CONFIGURATION_KEY_CPPCHECK_MISRA_PATH = "cppcheckMisraPath";
 
-    private static final String defaultOptions = "--enable=warning,performance,portability,style --language=c++";
+    private static final String defaultOptions = "--enable=warning,performance,portability,style";
 
     @Nls
     @Override
@@ -62,6 +62,7 @@ class Configuration implements Configurable {
         cppcheckOptionsField = new JTextField(defaultOptions, 38);
         cppcheckMisraFilePicker = new JFilePicker("MISRA Addon JSON:", "...");
 
+        // TODO: move these to the inspection settings so they can be adjusted per project and are not global
         // The first time a user installs the plugin, save the default options in their properties.
         if (Properties.get(CONFIGURATION_KEY_CPPCHECK_OPTIONS) == null ||
                 Properties.get(CONFIGURATION_KEY_CPPCHECK_OPTIONS).isEmpty()) {
