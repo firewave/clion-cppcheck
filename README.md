@@ -36,13 +36,6 @@ See
 
 ## Known Issues
 
-`cppcheck` is not designed to be run on header files (`.h`) directly, as must be done for this
-plugin, and as a result may have false positives.
-
-When run on header files directly, `cppcheck` defaults to C as the language, which will generate
-false positives for C++ projects.  C++ projects should append `--language=c++` to the
-`cppcheck` options.
-
 ## Development
 
 To run the plugin from source, open this project in IntelliJ and create a new "Plugin" run configuration. Running or

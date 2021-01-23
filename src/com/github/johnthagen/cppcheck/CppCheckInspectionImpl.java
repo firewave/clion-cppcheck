@@ -174,7 +174,6 @@ class CppCheckInspectionImpl {
                 continue;
             }
 
-            // Cppcheck error
             if (lineNumber <= 0 || lineNumber > document.getLineCount()) {
                 CppcheckNotification.send("line number out-of-bounds for " + psiFile.getVirtualFile().getCanonicalPath(),
                         id + " " + severity + " " + inconclusive + " " + errorMessage + " " + fileName + " " + lineNumber + " " + column,
