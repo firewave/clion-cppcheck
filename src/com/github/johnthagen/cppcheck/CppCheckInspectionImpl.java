@@ -54,6 +54,10 @@ class CppCheckInspectionImpl {
         }
     }
 
+    private static boolean isFatalError(final String id) {
+        return id.equals("syntaxError") || id.equals("preprocessorErrorDirective") || id.equals("internalAstError") || id.equals("cppcheckError");
+    }
+
     // TODO: make configurable
     private static final boolean VERBOSE_LOG = false;
     private static final String INCONCLUSIVE_TEXT = ":inconclusive";
@@ -162,24 +166,30 @@ class CppCheckInspectionImpl {
                 if (columnAttr != null) {
                     column = Integer.parseInt(columnAttr.getNodeValue());
                 }
-
-                // If a file #include's header files, Cppcheck will also run on the header files and print
-                // any errors. These errors don't apply to the current file and should not be drawn. They can
-                // be distinguished by checking the file name.
-                if (!fileName.equals(sourceFileName)) {
-                    continue;
-                }
             }
 
             // leaving it at null will report it for the whole file
             TextRange range = null;
 
+            // specifies an external file for the problem
+            String externalFile = null;
+
+            // If a file #include's header files, Cppcheck will also run on the header files and print
+            // any errors. These errors don't apply to the current file and should not be drawn. They can
+            // be distinguished by checking the file name.
+            if (fileName != null && !fileName.equals(sourceFileName)) {
+                // only skip non-fatal errors
+                if (!isFatalError(id))
+                    continue;
+                // set external file to be shown in the global error
+                externalFile = fileName + ":" + lineNumber + (column != -1 ? (":" + column) : "");
+            }
             /*
                 <error id="toomanyconfigs" severity="information" msg="Too many #ifdef configurations - cppcheck only checks 1 of 12 configurations. Use --force to check all configurations." verbose="The checking of the file will be interrupted because there are too many #ifdef configurations. Checking of all #ifdef configurations can be forced by --force command line option or from GUI preferences. However that may increase the checking time." cwe="398">
                     <location file="C:\Users\Name\AppData\Local\Temp\___valueflow.cpp" line="0" column="0"/>
                 </error>
             */
-            if (id.equals("toomanyconfigs")) {
+            else if (id.equals("toomanyconfigs")) {
                 // show as message for the file
             }
             // TODO: handle like any warning when Cppcheck provides the --check-config results with the normal analysis
@@ -217,7 +227,7 @@ class CppCheckInspectionImpl {
             final ProblemDescriptor problemDescriptor = manager.createProblemDescriptor(
                     psiFile,
                     range,
-                    "Cppcheck: (" + severity + (inconclusive ? INCONCLUSIVE_TEXT : "") + ") " + id + ": " + errorMessage,
+                    "Cppcheck: (" + severity + (inconclusive ? INCONCLUSIVE_TEXT : "") + ") " + id + (externalFile != null ? (" (" + externalFile + ")") : "") + ": " + errorMessage,
                     severityToHighlightType(severity),
                     true);
             descriptors.add(problemDescriptor);
