@@ -155,7 +155,7 @@ class CppCheckInspectionImpl {
             }
 
             // we are never interested in these
-            if (id.equals("unmatchedSuppression") || id.equals("purgedConfiguration")) {
+            if (id.equals("purgedConfiguration")) {
                 continue;
             }
 
@@ -180,11 +180,14 @@ class CppCheckInspectionImpl {
                 }
             }
 
-            // ignore entries without location e.g. missingIncludeSystem
+            // ignore entries without location e.g. unmatchedSuppression
             if (locations.isEmpty()) {
-                CppcheckNotification.send("no location for " + vFile.getCanonicalPath(),
-                        id + " " + severity + " " + inconclusive + " " + errorMessage,
-                        NotificationType.ERROR);
+                // do not report for non-inline unmatchedSuppression findings.
+                if (!id.equals("unmatchedSuppression")) {
+                    CppcheckNotification.send("no location for " + vFile.getCanonicalPath(),
+                            id + " " + severity + " " + inconclusive + " " + errorMessage,
+                            NotificationType.ERROR);
+                }
                 continue;
             }
 
@@ -202,6 +205,7 @@ class CppCheckInspectionImpl {
             // If a file #include's header files, Cppcheck will also run on the header files and print
             // any errors. These errors don't apply to the current file and should not be drawn. They can
             // be distinguished by checking the file name.
+            // Will also exclude non-inline unmatchedSuppression findings.
             if (!fileName.equals(sourceFileName)) {
                 continue;
             }
