@@ -82,6 +82,9 @@ class CppcheckInspection extends LocalInspectionTool {
             }
         }
         cppcheckOptions = String.format("%s --xml", cppcheckOptions);
+        // always run with jobs as it will provide better error details (when processes are being used).
+        // it also helps to differentiate execution issues from run-time issues.
+        cppcheckOptions = String.format("%s -j2", cppcheckOptions);
 
         int verboseLevel = 0;
         final String cppcheckVerboseLevel = Properties.get(Configuration.CONFIGURATION_KEY_CPPCHECK_VERBOSE_LEVEL);
